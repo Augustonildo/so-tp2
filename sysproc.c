@@ -103,3 +103,9 @@ int sys_wait2(void)
   if(argptr(2, (char**)&stime, sizeof(int)) < 0) return -1;
   return wait2(retime, rutime, stime);
 }
+
+int sys_yield(void)
+{
+  yield();
+  return 0;
+}
