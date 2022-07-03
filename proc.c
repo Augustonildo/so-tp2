@@ -90,12 +90,12 @@ found:
   p->pid = nextpid++;
   p->prio = 2;
   acquire(&tickslock);
-  p->tick_age = ticks;
+  p->ctime = ticks;
   release(&tickslock);
   p->stime = 0;
   p->retime = 0;
   p->rutime = 0;
-  
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -333,11 +333,7 @@ scheduler(void)
   struct cpu *c = mycpu();
   c->proc = 0;
   
-  for(;;){  
-    acquire(&tickslock);
-    int current_ticks = ticks;
-    release(&tickslock);
-    
+  for(;;){
     // Enable interrupts on this processor.
     sti();
 
@@ -345,24 +341,20 @@ scheduler(void)
     acquire(&ptable.lock);
 
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      // Aumento de prioridade de 1 para 2
-      if(p->state == RUNNABLE && p->prio == 1
-          && p->retime % Q1TO2 == 0) {
+      if(p->state != RUNNABLE) continue;
+
+      if(p->prio == 1 && p->retime % Q1TO2 == 0) {
         p->prio = 2;
-        p->tick_age = current_ticks;
-        continue;
       }
 
-      // Aumento de prioridade de 2 para 3
-      if(p->state == RUNNABLE && p->prio == 2
-          && p->retime % Q2TO3 == 0) {
+      if(p->prio == 2 && p->retime % Q2TO3 == 0) {
         p->prio = 3;
-        p->tick_age = current_ticks;
       }
     }
 
     int found_process = 0;
     for(int priority_queue = 3; priority_queue >= 1; priority_queue--){
+      if(found_process) break;
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->prio == priority_queue && p->state == RUNNABLE) {
           found_process = 1;
@@ -378,7 +370,6 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      p->tick_counter = current_ticks;
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -387,7 +378,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -577,12 +567,70 @@ int set_prio(int priority)
   return 0;
 }
 
-int wait2(int* retime, int* rutime, int* stime)
-{
-  if (wait() == -1) return -1;
-  if(myproc()->killed) return -1;
-  *retime = myproc()->retime;
-  *rutime = myproc()->rutime;
-  *stime = myproc()->stime;
-  return 0;
+void update_counters(void) {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    switch (p->state)
+    {
+      case SLEEPING:
+        p->stime++;
+        break;
+      case RUNNABLE:
+        p->retime++;
+        break;
+      case RUNNING:
+        p->rutime++;
+        break;
+      default:
+        break;
+    }
+  }
+  release(&ptable.lock);
+}
+
+// [ADD] Similar à wait default, adicionado o retorno dos valores seguido de reset; 
+int wait2(int *retime, int *rutime, int *stime) {
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        p->ctime = 0;
+        *retime = p->retime;
+        p->retime = 0;
+        *stime = p->stime;
+        p->stime = 0;
+        *rutime = p->rutime;
+        p->rutime = 0;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
 }

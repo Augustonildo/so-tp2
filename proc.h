@@ -41,9 +41,7 @@ struct proc {
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
-  int tick_counter;
-  int tick_age;
-  int prio;
+  int prio;                    // Prioridade atual
   uint ctime;                  // Tempo quando o processo foi criado
   int stime;                   //Tempo SLEEPING
   int retime;                  //Tempo READY(RUNNABLE) time

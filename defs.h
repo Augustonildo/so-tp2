@@ -121,6 +121,7 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             set_prio(int);
+void            update_counters(void);
 int             wait2(int* retime, int* rutime, int* stime);
 
 // swtch.S

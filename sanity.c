@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         int retime, rutime, stime;
         int pid = wait2(&retime, &rutime, &stime);
         enum types type = pid % 3;
-        printf(1, "Pid: %d\n Type=%s\n Tempo de espera=%d\n Tempo executando=%d\n Tempo de IO=%d\n", pid, types_names[type], retime, rutime, stime);
+        printf(1, "\nPid: %d\n Tipo=%s\n Tempo de espera=%d\n Tempo executando=%d\n Tempo de IO=%d\n", pid, types_names[type], retime, rutime, stime);
         retimeByTypes[type] += retime;
         stimeByTypes[type] += stime;
         rutimeByTypes[type] += retime + rutime + stime;
@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
         averageReadyTime[j] = retimeByTypes[j]/number;
         averageSleepingTime[j] = stimeByTypes[j]/number;
         averageTurnaroundTime[j] = rutimeByTypes[j]/number;
-        printf(1, "Tipo: %s\n Número de processos: %d\n Tempo médio SLEEPING: %d\n Tempo médio READY: %d\n Tempo médio de turnaround: %d", types_names[j], processes[j], averageSleepingTime[j], averageReadyTime[j], averageTurnaroundTime[j]);
+        printf(1, "\nTipo: %s\n Número de processos: %d\n Tempo médio SLEEPING: %d\n Tempo médio READY: %d\n Tempo médio de turnaround: %d", types_names[j], processes[j], averageSleepingTime[j], averageReadyTime[j], averageTurnaroundTime[j]);
         printf(1, "\n\n");
     }
     exit();
