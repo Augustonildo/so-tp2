@@ -18,7 +18,7 @@ void cpuBoundProcess()
     {
         for (int j = 0; j < 1000000; j++)
         {
-            // loop intencionalmente vazio
+            asm("nop");
         }
     }
 }
@@ -29,7 +29,7 @@ void sBoundProcess()
     {
         for (int j = 0; j < 1000000; j++)
         {
-            // loop intencionalmente vazio
+            asm("nop");
         }
         yield();
     }
@@ -93,18 +93,16 @@ int main(int argc, char* argv[])
         enum types type = pid % 3;
         printf(1, "Pid: %d\n Type=%s\n Tempo de espera=%d\n Tempo executando=%d\n Tempo de IO=%d\n", pid, types_names[type], retime, rutime, stime);
         retimeByTypes[type] += retime;
-        rutimeByTypes[type] += stime;
-        stimeByTypes[type] += retime + rutime + stime;
-    
+        stimeByTypes[type] += stime;
+        rutimeByTypes[type] += retime + rutime + stime;
     }
 
     for (int j = 0; j < PROCESS_TYPES; j++)
     {
-        double averageReadyTime[PROCESS_TYPES], averageSleepingTime[PROCESS_TYPES], averageTurnaroundTime[PROCESS_TYPES];
-        int totalProcesses = number * MULTIPLIER;
-        averageReadyTime[j] = retimeByTypes[j]/totalProcesses;
-        averageSleepingTime[j] = stimeByTypes[j]/totalProcesses;
-        averageTurnaroundTime[j] = rutimeByTypes[j]/totalProcesses;
+        int averageReadyTime[PROCESS_TYPES], averageSleepingTime[PROCESS_TYPES], averageTurnaroundTime[PROCESS_TYPES];
+        averageReadyTime[j] = retimeByTypes[j]/number;
+        averageSleepingTime[j] = stimeByTypes[j]/number;
+        averageTurnaroundTime[j] = rutimeByTypes[j]/number;
         printf(1, "Tipo: %s\n Número de processos: %d\n Tempo médio SLEEPING: %d\n Tempo médio READY: %d\n Tempo médio de turnaround: %d", types_names[j], processes[j], averageSleepingTime[j], averageReadyTime[j], averageTurnaroundTime[j]);
         printf(1, "\n\n");
     }
