@@ -344,7 +344,7 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       // Aumento de prioridade de 1 para 2
       if(p->state == RUNNABLE && p->prio == 1
-          && (current_ticks - p->tick_age) >= T1TO2) {
+          && (current_ticks - p->tick_age) >= Q1TO2) {
         p->prio = 2;
         p->tick_age = current_ticks;
         continue;
@@ -352,7 +352,7 @@ scheduler(void)
 
       // Aumento de prioridade de 2 para 3
       if(p->state == RUNNABLE && p->prio == 2
-          && (current_ticks - p->tick_age) >= T2TO3) {
+          && (current_ticks - p->tick_age) >= Q2TO3) {
         p->prio = 3;
         p->tick_age = current_ticks;
       }
