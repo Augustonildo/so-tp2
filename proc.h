@@ -44,6 +44,10 @@ struct proc {
   int tick_counter;
   int tick_age;
   int prio;
+  uint ctime;                  // Tempo quando o processo foi criado
+  int stime;                   //Tempo SLEEPING
+  int retime;                  //Tempo READY(RUNNABLE) time
+  int rutime;                  // Tempo executando (RUNNING)
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process

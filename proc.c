@@ -92,7 +92,10 @@ found:
   acquire(&tickslock);
   p->tick_age = ticks;
   release(&tickslock);
-
+  p->stime = 0;
+  p->retime = 0;
+  p->rutime = 0;
+  
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -344,7 +347,7 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       // Aumento de prioridade de 1 para 2
       if(p->state == RUNNABLE && p->prio == 1
-          && (current_ticks - p->tick_age) >= Q1TO2) {
+          && p->retime % Q1TO2 == 0) {
         p->prio = 2;
         p->tick_age = current_ticks;
         continue;
@@ -352,7 +355,7 @@ scheduler(void)
 
       // Aumento de prioridade de 2 para 3
       if(p->state == RUNNABLE && p->prio == 2
-          && (current_ticks - p->tick_age) >= Q2TO3) {
+          && p->retime % Q2TO3 == 0) {
         p->prio = 3;
         p->tick_age = current_ticks;
       }
@@ -571,5 +574,15 @@ int set_prio(int priority)
   if(priority < 0 || priority > 3) return -1;
   if(myproc()->killed) return -1;
   myproc()->prio = priority;
+  return 0;
+}
+
+int wait2(int* retime, int* rutime, int* stime)
+{
+  if (wait() == -1) return -1;
+  if(myproc()->killed) return -1;
+  *retime = myproc()->retime;
+  *rutime = myproc()->rutime;
+  *stime = myproc()->stime;
   return 0;
 }
