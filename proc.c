@@ -88,6 +88,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->prio = 2;
+  acquire(&tickslock);
+  p->tick_age = ticks;
+  release(&tickslock);
 
   release(&ptable.lock);
 
@@ -326,24 +330,52 @@ scheduler(void)
   struct cpu *c = mycpu();
   c->proc = 0;
   
-  for(;;){
+  for(;;){  
+    acquire(&tickslock);
+    int current_ticks = ticks;
+    release(&tickslock);
+    
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      // Aumento de prioridade de 1 para 2
+      if(p->state == RUNNABLE && p->prio == 1
+          && (current_ticks - p->tick_age) >= T1TO2) {
+        p->prio = 2;
+        p->tick_age = current_ticks;
+        continue;
+      }
+
+      // Aumento de prioridade de 2 para 3
+      if(p->state == RUNNABLE && p->prio == 2
+          && (current_ticks - p->tick_age) >= T2TO3) {
+        p->prio = 3;
+        p->tick_age = current_ticks;
+      }
+    }
+
+    int found_process = 0;
+    for(int priority_queue = 3; priority_queue >= 1; priority_queue--){
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->prio == priority_queue && p->state == RUNNABLE) {
+          found_process = 1;
+          break;
+        }
+      }
+    }
+
+    if(found_process){
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
-      p->tick_counter = ticks;
       p->state = RUNNING;
-
+      p->tick_counter = current_ticks;
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -532,4 +564,12 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int set_prio(int priority)
+{
+  if(priority < 0 || priority > 3) return -1;
+  if(myproc()->killed) return -1;
+  myproc()->prio = priority;
+  return 0;
 }
